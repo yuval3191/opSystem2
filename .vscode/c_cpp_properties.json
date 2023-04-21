@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 {
     "configurations": [
         {
@@ -13,4 +14,22 @@
         }
     ],
     "version": 4
+=======
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/riscv64-linux-gnu-gcc",
+            "cStandard": "${default}",
+            "cppStandard": "gnu++14",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.makefile-tools"
+        }
+    ],
+    "version": 4
+>>>>>>> 32fdd8d16da53fb5ac1198ed3c335590379cfb3d
 }
