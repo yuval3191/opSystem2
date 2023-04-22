@@ -6,6 +6,7 @@
         "uthread.h": "c",
         "stat.h": "c",
         "memlayout.h": "c",
-        "user.h": "c"
+        "user.h": "c",
+        "kthread.h": "c"
     },
 }
