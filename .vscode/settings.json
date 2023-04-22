@@ -3,5 +3,9 @@
         "types.h": "c",
         "riscv.h": "c",
         "defs.h": "c",
+        "uthread.h": "c",
+        "stat.h": "c",
+        "memlayout.h": "c",
+        "user.h": "c"
     },
 }
