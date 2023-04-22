@@ -1,4 +1,7 @@
 
+static struct kthread* allockthread(struct proc* p);
+static void freekthread(struct kthread* kt);
+
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;
@@ -93,7 +96,7 @@ struct kthread
   int xstate;                  // Exit status to be returned to parent's wait
   int tid;                     // thread ID
 
-  struct proc* mypcb;           //pcb it's belong to
+  struct proc* myproc;           //pcb it's belong to
   struct context context;       // swtch() here to run process
   uint64 kstack;                // Virtual address of kernel stack
 
