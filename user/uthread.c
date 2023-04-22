@@ -6,6 +6,8 @@
 struct uthread  all_threads[MAX_UTHREADS];
 struct uthread* curr_thread;
 
+int num_of_threads = 0;
+
 int find_free_entry(){
     for (int i = 0; i < MAX_UTHREADS; i++)
     {
@@ -16,18 +18,6 @@ int find_free_entry(){
     return -1;
 }
 
-void combined_function(void (*f)(), void (*g)()) {
-    f();
-    g();
-}
-
-void (*wrapper_function(void (*f)(), void (*g)()))() {
-    void (*combined)() = &combined_function;
-    void (*result)() = ^{
-        combined(f, g);
-    };
-    return result;
-}
 
 int uthread_create(void (*start_func)(), enum sched_priority priority){
 
@@ -38,25 +28,20 @@ int uthread_create(void (*start_func)(), enum sched_priority priority){
     
     struct uthread* thread = &all_threads[entry];
     memset(&thread->context, 0, sizeof(thread->context));
-    void (*start_f)() = ^()
-    {
-        start_func();
-        uthread_exit();
-    };
-    thread->context.ra = (uint64)(()->);
-    thread->context.sp = thread->ustack + STACK_SIZE;
+    thread->context.ra = (uint64)start_func;
+    thread->context.sp = (uint64)&(thread->ustack) + STACK_SIZE;
     thread->priority = priority;
     thread->state = RUNNABLE;
+    num_of_threads++;
 
     return 0;
 }
 
-void uthread_yield()
+void usched()
 {
     struct uthread* t;
-    struct uthread* newT;
+    struct uthread* newT = 0;
     enum sched_priority maxP = LOW;
-    int i;
     for (t = all_threads;t < &all_threads[MAX_UTHREADS];t++)
     {
         if (t->state == RUNNABLE && t->priority >= maxP ){
@@ -64,13 +49,69 @@ void uthread_yield()
             newT = t;
         }
     }
-    curr_thread->state = RUNNABLE;
-    uswtch(&curr_thread->context,&newT->context);
+
+    t = curr_thread;
     curr_thread = newT;
+
+    curr_thread->state = RUNNING;
+    uswtch(&t->context,&newT->context);
 }
 
+void uthread_yield()
+{
+    curr_thread->state = RUNNABLE;
+    usched();
+}
 
-int
-main(int argc, char *argv[]){
-    return 1;
+void uthread_exit()
+{
+    num_of_threads--;
+
+    curr_thread->priority = 0;
+    curr_thread->state  = FREE;
+    if (num_of_threads == 0)
+        exit(0);
+    else
+        usched();
+}
+
+enum sched_priority uthread_set_priority(enum sched_priority priority){
+    enum sched_priority oldP = curr_thread->priority;
+    curr_thread->priority = priority;
+    return oldP;
+}
+
+enum sched_priority uthread_get_priority(){
+    return curr_thread->priority;
+}
+
+int uthread_start_all(){
+
+    static int flag = 1;
+
+    if (flag)
+    {
+        struct uthread* t;
+        struct uthread* newT = 0;
+        enum sched_priority maxP = LOW;
+        for (t = all_threads;t < &all_threads[MAX_UTHREADS];t++)
+        {
+            if (t->state == RUNNABLE && t->priority >= maxP ){
+                maxP = t->priority;
+                newT = t;
+            }
+        }
+        curr_thread = newT;
+        newT->state = RUNNING;
+        void (*fptr)() = (void (*)())(curr_thread->context.ra);
+        (*fptr)();
+        exit(0);
+    }
+    else{
+        return -1;
+    }
+}
+
+struct uthread* uthread_self(){
+    return curr_thread;
 }
