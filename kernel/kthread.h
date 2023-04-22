@@ -1,7 +1,4 @@
 
-static struct kthread* allockthread(struct proc* p);
-static void freekthread(struct kthread* kt);
-
 // Saved registers for kernel context switches.
 struct context {
   uint64 ra;

@@ -31,8 +31,10 @@ forkret(void)
 
 void kthreadinit(struct proc *p)
 {
-  initlock(&(p->counter_lock),"counter_lock");
-  for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  // printf("entering kthreadinit\n");
+  initlock(&p->counter_lock,"counter_lock");
+  struct kthread *kt;
+  for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
     initlock(&(kt->lock),"kthread_lock");
     kt->state = UNUSED;
@@ -48,7 +50,12 @@ struct kthread *mykthread()
 {
   push_off();
   struct cpu *c = mycpu();
-  struct kthread *t = c->thread;
+  struct kthread *t;
+  if (c->thread){
+    t = 0;
+  }
+  else
+    t = c->thread;
   pop_off();
   return t;
 }
@@ -66,7 +73,7 @@ alloctid(struct proc* p)
   return tid;
 }
 
-static struct kthread*
+struct kthread*
 allockthread(struct proc* p)
 {
   struct kthread *kt;
@@ -87,7 +94,8 @@ found:
 
   // Allocate a trapframe page.
   // struct trapframe* trpframe = get_kthread_trapframe(p,kt);
-  if(kt->trapframe = get_kthread_trapframe(p,kt) == 0){
+
+  if((kt->trapframe = get_kthread_trapframe(p,kt)) == 0){
     freekthread(kt);
     release(&kt->lock);
     return 0;
@@ -102,14 +110,14 @@ found:
   return kt;
 }
 
-static void
+void
 freekthread(struct kthread* kt)
 {
   kt->trapframe = 0;
   kt->chan = 0;
   kt->killed = 0;
   kt->kstack = 0;
-  kt->proc = 0;
+  kt->myproc = 0;
   kt->tid = 0;
   kt->xstate = 0;
   kt->state = UNUSED;
@@ -118,11 +126,4 @@ freekthread(struct kthread* kt)
 struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
 {
   return p->base_trapframes + ((int)(kt - p->kthread));
-}
-
-// TODO: delte this after you are done with task 2.2
-void allocproc_help_function(struct proc *p) {
-  p->kthread->trapframe = get_kthread_trapframe(p, p->kthread);
-
-  p->context.sp = p->kthread->kstack + PGSIZE;
 }

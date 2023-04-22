@@ -6,6 +6,7 @@
 #include "proc.h"
 #include "defs.h"
 
+
 struct cpu cpus[NCPU];
 
 struct proc proc[NPROC];
@@ -86,7 +87,12 @@ myproc(void)
 {
   push_off();
   struct cpu *c = mycpu();
-  struct proc *p = c->thread->myproc;
+  struct proc *p ;
+  if (c->thread  == 0){
+    p = 0;
+  }
+  else
+    p = c->thread->myproc;
   pop_off();
   return p;
 }
@@ -124,9 +130,7 @@ allocproc(void)
   return 0;
 
 found:
-  kthreadinit(p);
-  p->tcounter = 1;
-  allockthread(p);
+
 
   p->pid = allocpid();
   p->state = PUSED;
@@ -146,6 +150,9 @@ found:
     release(&p->lock);
     return 0;
   }
+
+  p->tcounter = 1;
+  allockthread(p);
 
   return p;
 }
@@ -177,7 +184,7 @@ freeproc(struct proc *p)
   p->name[0] = 0;
   p->killed = 0;
   p->xstate = 0;
-  p->state = UNUSED;
+  p->state = PUNUSED;
 }
 
 // Create a user page table for a given process, with no user memory,
@@ -242,7 +249,6 @@ void
 userinit(void)
 {
   struct proc *p;
-
   p = allocproc();
   initproc = p;
   
@@ -251,18 +257,18 @@ userinit(void)
   uvmfirst(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
+  
   // prepare for the very first "return" from kernel to user.
   p->kthread[0].trapframe->epc = 0;      // user program counter
   p->kthread[0].trapframe->sp = PGSIZE;  // user stack pointer
 
   p->kthread[0].state = RUNNABLE;
 
-  release(&p->kthread[0].lock);
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
 
-  p->state = PUSED;
+  release(&p->kthread[0].lock);
 
   release(&p->lock);
 }
@@ -434,7 +440,7 @@ wait(uint64 addr)
         acquire(&pp->lock);
 
         havekids = 1;
-        if(pp->state == ZOMBIE){
+        if(pp->state == PZOMBIE){
           // Found one.
           pid = pp->pid;
           if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
@@ -487,17 +493,20 @@ scheduler(void)
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
         // before jumping back to us.
-        
-        acquire(&p->kthread[0].lock);
-        p->kthread[0].state = RUNNING;
-        c->thread = &p->kthread[0];
-        swtch(&c->context, &p->kthread[0].context);
 
-        release(&p->kthread[0].lock);
+        for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+          acquire(&kt->lock);
+          if (kt->state == RUNNABLE){
+            kt->state = RUNNING;
+            c->thread = kt;
+            swtch(&c->context, &kt->context);
+            c->thread = 0;
+          }
+          release(&kt->lock);
+        }
 
         // Process is done running for now.
         // It should have changed its p->state before coming back.
-        c->thread = 0;
 
       }
       release(&p->lock);
@@ -546,7 +555,7 @@ yield(void)
   acquire(&kt->lock);
   kt->state = RUNNABLE;
   sched();
-  kthread(&p->lock);
+  release(&kt->lock);
   release(&p->lock);
 }
 
@@ -620,17 +629,16 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       
-      if(p->state == SLEEPING){
-        // Wake process from sleep().
-        for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++){
-          acquire(&kt->lock);
-          if (kt->state == SLEEPING){
-            kt->state = RUNNABLE;
-          }
-          release(&kt->lock);
+     
+      // Wake process from sleep().
+      for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+        acquire(&kt->lock);
+        if (kt->state == SLEEPING){
+          kt->state = RUNNABLE;
         }
-        p->state = PUSED;
+        release(&kt->lock);
       }
+      p->state = PUSED;
       release(&p->lock);
       return 0;
     }
@@ -704,7 +712,7 @@ procdump(void)
 
   printf("\n");
   for(p = proc; p < &proc[NPROC]; p++){
-    if(p->state == UNUSED)
+    if(p->state == PUNUSED)
       continue;
     if(p->state >= 0 && p->state < NELEM(states) && states[p->state])
       state = states[p->state];
