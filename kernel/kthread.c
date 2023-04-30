@@ -31,15 +31,12 @@ forkret(void)
 
 void kthreadinit(struct proc *p)
 {
-  // printf("entering kthreadinit\n");
-  initlock(&p->counter_lock,"counter_lock");
   struct kthread *kt;
   for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
-    initlock(&(kt->lock),"kthread_lock");
+    initlock(&kt->lock,"kthread_lock");
     kt->state = UNUSED;
     kt->myproc = p;
-
     // WARNING: Don't change this line!
     // get the pointer to the kernel stack of the kthread
     kt->kstack = KSTACK((int)((p - proc) * NKT + (kt - p->kthread)));
@@ -91,6 +88,7 @@ allockthread(struct proc* p)
 found:
   kt->tid = alloctid(p);
   kt->state = USED;
+
 
   // Allocate a trapframe page.
   // struct trapframe* trpframe = get_kthread_trapframe(p,kt);

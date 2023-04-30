@@ -56,6 +56,7 @@ procinit(void)
   initlock(&wait_lock, "wait_lock");
   for(p = proc; p < &proc[NPROC]; p++) {
       initlock(&p->lock, "proc");
+      initlock(&p->counter_lock,"counter_lock");
       p->state = UNUSED;
       kthreadinit(p);
   }
@@ -90,9 +91,12 @@ myproc(void)
   struct proc *p ;
   if (c->thread  == 0){
     p = 0;
+    printf("this is the procces when thread is zero %p\n",p);
   }
-  else
+  else{
     p = c->thread->myproc;
+    printf("this is the procces when thread not zero %p\n",p);
+  }
   pop_off();
   return p;
 }
@@ -119,7 +123,7 @@ allocproc(void)
 {
   struct proc *p;
 
-  for(p = proc; p < &proc[NPROC]; p++) {
+  for(p = proc; p < &proc[NPROC]; p++) { 
     acquire(&p->lock);
     if(p->state == PUNUSED) {
       goto found;
@@ -130,8 +134,6 @@ allocproc(void)
   return 0;
 
 found:
-
-
   p->pid = allocpid();
   p->state = PUSED;
 
@@ -257,7 +259,6 @@ userinit(void)
   uvmfirst(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
 
-  
   // prepare for the very first "return" from kernel to user.
   p->kthread[0].trapframe->epc = 0;      // user program counter
   p->kthread[0].trapframe->sp = PGSIZE;  // user stack pointer
@@ -599,21 +600,24 @@ sleep(void *chan, struct spinlock *lk)
 void
 wakeup(void *chan)
 {
-  struct proc *p = myproc();
-  acquire(&p->lock);
+  struct proc *p;
 
-  struct kthread *otherkt;
-  for(otherkt = p->kthread; otherkt < &p->kthread[NKT]; otherkt++) 
-  {
-    if(otherkt != mykthread()){
-      acquire(&otherkt->lock);
-      if(otherkt->state == SLEEPING && otherkt->chan == chan) {
-        otherkt->state = RUNNABLE;
+  for(p = proc; p < &proc[NPROC]; p++) {
+    if(p != myproc() && p->state == PUSED){
+      acquire(&p->lock);
+      struct kthread *kt;
+      for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+        if(kt != mykthread()){
+          acquire(&kt->lock);
+          if(kt->state == SLEEPING && kt->chan == chan) {
+            kt->state = RUNNABLE;
+          }
+          release(&kt->lock);
+        }
       }
-      release(&otherkt->lock);
+      release(&p->lock);
     }
   }
-  release(&p->lock);
 }
 
 // Kill the process with the given pid.
