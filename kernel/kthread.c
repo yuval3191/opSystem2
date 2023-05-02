@@ -16,7 +16,7 @@ forkret(void)
   static int first = 1;
 
   // Still holding p->lock from scheduler.
-  release(&myproc()->lock);
+  release(&mykthread()->lock);
 
   if (first) {
     // File system initialization must be run in the context of a
@@ -47,12 +47,7 @@ struct kthread *mykthread()
 {
   push_off();
   struct cpu *c = mycpu();
-  struct kthread *t;
-  if (c->thread){
-    t = 0;
-  }
-  else
-    t = c->thread;
+  struct kthread *t = c->thread;
   pop_off();
   return t;
 }
@@ -103,7 +98,8 @@ found:
   // which returns to user space.
   memset(&kt->context, 0, sizeof(kt->context));
   kt->context.ra = (uint64)forkret;
-  kt->context.sp = kt->kstack + PGSIZE;
+  kt->context.sp = kt->kstack + PGSIZE - 1;
+  // kt->context.sp = kt->kstack + PGSIZE;
 
   return kt;
 }

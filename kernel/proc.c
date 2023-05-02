@@ -91,11 +91,9 @@ myproc(void)
   struct proc *p ;
   if (c->thread  == 0){
     p = 0;
-    printf("this is the procces when thread is zero %p\n",p);
   }
   else{
     p = c->thread->myproc;
-    printf("this is the procces when thread not zero %p\n",p);
   }
   pop_off();
   return p;
@@ -444,8 +442,8 @@ wait(uint64 addr)
         if(pp->state == PZOMBIE){
           // Found one.
           pid = pp->pid;
-          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,
-                                  sizeof(pp->xstate)) < 0) {
+          if(addr != 0 && copyout(p->pagetable, addr, (char *)&pp->xstate,sizeof(pp->xstate)) < 0) 
+          {
             release(&pp->lock);
             release(&wait_lock);
             return -1;
@@ -488,8 +486,8 @@ scheduler(void)
     // Avoid deadlock by ensuring that devices can interrupt.
     intr_on();
 
-    for(p = proc; p < &proc[NPROC]; p++) {
-      acquire(&p->lock);
+    for(p = proc; p < &proc[NPROC]; p++) 
+    {
       if(p->state == PUSED) {
         // Switch to chosen process.  It is the process's job
         // to release its lock and then reacquire it
@@ -505,12 +503,9 @@ scheduler(void)
           }
           release(&kt->lock);
         }
-
         // Process is done running for now.
         // It should have changed its p->state before coming back.
-
       }
-      release(&p->lock);
     }
   }
 }
@@ -526,11 +521,10 @@ void
 sched(void)
 {
   int intena;
-  struct proc *p = myproc();
   struct kthread *kt = mykthread();
 
-  if(!holding(&p->lock))
-    panic("sched p->lock");
+  // if(!holding(&p->lock))
+  //   panic("sched p->lock");
   if(!holding(&kt->lock))
     panic("sched kt->lock");
   if(mycpu()->noff != 1)
@@ -566,7 +560,7 @@ yield(void)
 void
 sleep(void *chan, struct spinlock *lk)
 {
-  struct proc *p = myproc();
+  // struct proc *p = myproc();
   struct kthread* kt = mykthread();
   
   // Must acquire p->lock in order to
@@ -576,7 +570,7 @@ sleep(void *chan, struct spinlock *lk)
   // (wakeup locks p->lock),
   // so it's okay to release lk.
 
-  acquire(&p->lock);  //DOC: sleeplock1
+  // acquire(&p->lock);  //DOC: sleeplock1
   acquire(&kt->lock);
   release(lk);
 
@@ -591,7 +585,7 @@ sleep(void *chan, struct spinlock *lk)
   
   // Reacquire original lock.
   release(&kt->lock);
-  release(&p->lock);
+  // release(&p->lock);
   acquire(lk);
 }
 
@@ -603,16 +597,18 @@ wakeup(void *chan)
   struct proc *p;
 
   for(p = proc; p < &proc[NPROC]; p++) {
-    if(p != myproc() && p->state == PUSED){
+    if(p != myproc()){
       acquire(&p->lock);
-      struct kthread *kt;
-      for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
-        if(kt != mykthread()){
-          acquire(&kt->lock);
-          if(kt->state == SLEEPING && kt->chan == chan) {
-            kt->state = RUNNABLE;
+      if (p->state == PUSED){
+        struct kthread *kt;
+        for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+          if(kt != mykthread()){
+            acquire(&kt->lock);
+            if(kt->state == SLEEPING && kt->chan == chan) {
+              kt->state = RUNNABLE;
+            }
+            release(&kt->lock);
           }
-          release(&kt->lock);
         }
       }
       release(&p->lock);
@@ -630,10 +626,9 @@ kill(int pid)
 
   for(p = proc; p < &proc[NPROC]; p++){
     acquire(&p->lock);
-    if(p->pid == pid){
+    if(p->pid == pid)
+    {
       p->killed = 1;
-      
-     
       // Wake process from sleep().
       for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++){
         acquire(&kt->lock);
