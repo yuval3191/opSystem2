@@ -402,14 +402,21 @@ exit(int status)
   p->xstate = status;
   p->state = PZOMBIE;
 
-  struct kthread* kt;
+  release(&p->lock);
   
-  for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
-  {
-    acquire(&kt->lock);
-    kt->state = ZOMBIE;
-    release(&kt->lock);
-  }
+  struct kthread* kt = mykthread();
+  acquire(&kt->lock);
+  kt->state = ZOMBIE;
+  kt->xstate = status;
+
+  // for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
+  // {
+  //   acquire(&kt->lock);
+  //   kt->state = ZOMBIE;
+  //   // release(&kt->lock);
+  // }
+
+
   
 
   release(&wait_lock);
@@ -543,15 +550,12 @@ sched(void)
 void
 yield(void)
 {
-  struct proc *p = myproc();
-  acquire(&p->lock);
 
   struct kthread *kt = mykthread();
   acquire(&kt->lock);
   kt->state = RUNNABLE;
   sched();
   release(&kt->lock);
-  release(&p->lock);
 }
 
 

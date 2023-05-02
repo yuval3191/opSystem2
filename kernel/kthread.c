@@ -98,8 +98,8 @@ found:
   // which returns to user space.
   memset(&kt->context, 0, sizeof(kt->context));
   kt->context.ra = (uint64)forkret;
-  kt->context.sp = kt->kstack + PGSIZE - 1;
-  // kt->context.sp = kt->kstack + PGSIZE;
+  // kt->context.sp = kt->kstack + PGSIZE - 1;
+  kt->context.sp = kt->kstack + PGSIZE;
 
   return kt;
 }
@@ -110,7 +110,6 @@ freekthread(struct kthread* kt)
   kt->trapframe = 0;
   kt->chan = 0;
   kt->killed = 0;
-  kt->kstack = 0;
   kt->myproc = 0;
   kt->tid = 0;
   kt->xstate = 0;
