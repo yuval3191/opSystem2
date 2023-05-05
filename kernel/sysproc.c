@@ -7,6 +7,54 @@
 #include "proc.h"
 
 uint64
+sys_kthread_create(void)
+{
+  uint64 p;
+  uint64 stack;
+  int size;
+
+  argaddr(0, &p);
+  argaddr(1, &stack);
+  argint(2,&size);
+
+  return kthread_create( p, stack, (uint)size );
+}
+
+uint64
+sys_kthread_id(void)
+{
+  return mykthread()->tid;
+}
+
+uint64
+sys_kthread_kill(void)
+{
+  int pid;
+
+  argint(0, &pid);
+  return kthread_kill(pid);
+}
+
+uint64
+sys_kthread_exit(void){
+  int status;
+  argint(0,&status);
+  kthread_exit(status);
+}
+
+uint64
+sys_kthread_join(void){
+  int ktid;
+  uint64 status;
+
+  argaddr(0, &status);
+  argint(0,ktid);
+
+  return kthread_join(ktid,status);
+}
+
+
+uint64
 sys_exit(void)
 {
   int n;

@@ -114,9 +114,111 @@ freekthread(struct kthread* kt)
   kt->tid = 0;
   kt->xstate = 0;
   kt->state = UNUSED;
+
+  memset(&kt->context, 0, sizeof(kt->context));
 }
 
 struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt)
 {
   return p->base_trapframes + ((int)(kt - p->kthread));
+}
+
+int kthread_create( uint64 start_func, uint64 stack, uint stack_size )
+{
+  int tid;
+  struct kthread *nkt;
+  struct kthread *kt = mykthread();
+  struct proc *p = myproc();
+
+  // Allocate kthread.
+  if((nkt = allockthread(p)) == 0){
+    return -1;
+  }
+  tid = nkt->tid;
+
+  // copy saved user registers.
+  *(nkt->trapframe) = *(kt->trapframe);
+
+    // Cause fork to return 0 in the child.
+  nkt->trapframe->a0 = 0;
+  nkt->myproc = p;
+
+  nkt->state = RUNNABLE;
+
+  nkt->trapframe->epc = (uint64)(start_func);      // user program counter
+  nkt->trapframe->sp = kt->kstack + stack_size;  // user stack pointer
+
+  release(&nkt->lock);
+  return tid;
+}
+
+int kthread_kill(int ktid)
+{
+  struct proc *p = myproc();
+  struct kthread *kt;
+
+  for(kt = p->kthread; kt < &p->kthread[NKT]; kt++) {
+    acquire(&kt->lock);
+    if(kt->tid == ktid)
+    {
+      kt->killed = 1;
+      if (kt->state == SLEEPING){
+        kt->state = RUNNABLE;
+      }
+      release(&kt->lock);
+      return 0;
+    }
+    release(&kt->lock);
+  }
+  return -1;
+}
+void kthread_exit(int status)
+{
+  struct kthread* kt = mykthread();
+  acquire(&kt->lock);
+  kt->state = ZOMBIE;
+  kt->xstate = status;
+  release(&kt->lock);
+}
+
+int kthread_join(int ktid, uint64 status)
+{
+  int tid;
+  int found = 0;
+  struct proc *p = myproc();
+  struct kthread *kt;
+  
+
+  for(;;){
+    // Scan through table looking for exited children.
+    for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+      if(kt->tid == ktid){
+        // make sure the child isn't still in exit() or swtch().
+        acquire(&kt->lock);
+
+        if(kt->state == ZOMBIE){
+          // Found one.
+
+          if(kt->xstate || (status != 0 && copyout(p->pagetable, status, (char *)&kt->xstate,sizeof(kt->xstate)) < 0))
+          {
+            release(&kt->lock);
+            return -1;
+          }
+          freeproc(kt);
+          release(&kt->lock);
+          return 0;
+        }
+        release(&kt->lock);
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!found || killed(p)){
+      // release(&wait_lock);
+      return -1;
+    }
+    
+    // Wait for a child to exit.
+    // sleep(p, &wait_lock);  //DOC: wait-sleep
+  }
 }

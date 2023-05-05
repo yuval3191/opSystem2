@@ -175,7 +175,7 @@ freeproc(struct proc *p)
     if (kt)
       freekthread(kt);
   }
-  p->tcounter = 0;
+  // p->tcounter = 0;
 
   p->pagetable = 0;
   p->sz = 0;
@@ -329,6 +329,7 @@ fork(void)
 
   safestrcpy(np->name, p->name, sizeof(p->name));
 
+  np->kthread[0].myproc = np;
   pid = np->pid;
 
   release(&np->kthread[0].lock);
@@ -636,6 +637,7 @@ kill(int pid)
       // Wake process from sleep().
       for (struct kthread *kt = p->kthread; kt < &p->kthread[NKT]; kt++){
         acquire(&kt->lock);
+        kt->killed = 1;
         if (kt->state == SLEEPING){
           kt->state = RUNNABLE;
         }
