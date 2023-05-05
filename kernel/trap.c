@@ -53,7 +53,7 @@ usertrap(void)
   if(r_scause() == 8){
     // system call
 
-    if(killed(p))
+    if(killed(p) || ktKilled(kt))
       exit(-1);
 
     // sepc points to the ecall instruction,
@@ -71,9 +71,10 @@ usertrap(void)
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     setkilled(p);
+
   }
 
-  if(killed(p))
+  if(killed(p) || ktKilled(kt))
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.

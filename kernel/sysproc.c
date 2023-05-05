@@ -40,6 +40,7 @@ sys_kthread_exit(void){
   int status;
   argint(0,&status);
   kthread_exit(status);
+  return 0;
 }
 
 uint64
@@ -48,7 +49,7 @@ sys_kthread_join(void){
   uint64 status;
 
   argaddr(0, &status);
-  argint(0,ktid);
+  argint(0,&ktid);
 
   return kthread_join(ktid,status);
 }
@@ -106,7 +107,7 @@ sys_sleep(void)
   acquire(&tickslock);
   ticks0 = ticks;
   while(ticks - ticks0 < n){
-    if(killed(myproc())){
+    if(killed(myproc()) || ktKilled(mykthread())){
       release(&tickslock);
       return -1;
     }

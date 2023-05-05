@@ -118,6 +118,7 @@ int kthread_create( uint64, uint64, uint stack_size );
 int  kthread_kill(int ktid);
 void kthread_exit(int status);
 int  kthread_join(int ktid, uint64 status);
+int ktKilled(struct kthread *kt);
 
 struct trapframe *get_kthread_trapframe(struct proc *p, struct kthread *kt);
 

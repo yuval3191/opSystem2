@@ -111,6 +111,22 @@ exec(char *path, char **argv)
   if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
     goto bad;
 
+
+  //our stufff
+  int id;
+  struct kthread *nkt;
+  char buff[100];
+  
+  for(nkt = p->kthread; nkt < &p->kthread[NKT]; nkt++) {
+    if (nkt != mykthread()){
+      acquire(&nkt->lock);
+      id = nkt->tid;
+      nkt->killed = 1;
+      release(&nkt->lock);
+      kthread_join(id,(uint64)buff);
+    }
+  }
+
   // arguments to user main(argc, argv)
   // argc is returned via the system call return
   // value, which goes in a0.

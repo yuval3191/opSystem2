@@ -6,6 +6,8 @@
 #include "proc.h"
 #include "defs.h"
 
+struct spinlock my_wait_lock;
+
 extern struct proc proc[NPROC];
 
 // A fork child's very first scheduling by scheduler()
@@ -31,6 +33,8 @@ forkret(void)
 
 void kthreadinit(struct proc *p)
 {
+  initlock(&my_wait_lock, "my_wait_lock");
+
   struct kthread *kt;
   for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
   {
@@ -183,29 +187,32 @@ void kthread_exit(int status)
 
 int kthread_join(int ktid, uint64 status)
 {
-  int tid;
+  // int tid;
   int found = 0;
   struct proc *p = myproc();
   struct kthread *kt;
-  
+
+  acquire(&my_wait_lock);
 
   for(;;){
     // Scan through table looking for exited children.
     for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
-      if(kt->tid == ktid){
+      if(kt->tid == ktid && kt->state != UNUSED ){
         // make sure the child isn't still in exit() or swtch().
         acquire(&kt->lock);
-
+        found = 1;
         if(kt->state == ZOMBIE){
           // Found one.
-
+          
           if(kt->xstate || (status != 0 && copyout(p->pagetable, status, (char *)&kt->xstate,sizeof(kt->xstate)) < 0))
           {
             release(&kt->lock);
+            release(&my_wait_lock);
             return -1;
           }
-          freeproc(kt);
+          // freeproc(kt);
           release(&kt->lock);
+          release(&my_wait_lock);
           return 0;
         }
         release(&kt->lock);
@@ -213,12 +220,23 @@ int kthread_join(int ktid, uint64 status)
     }
 
     // No point waiting if we don't have any children.
-    if(!found || killed(p)){
-      // release(&wait_lock);
+    if(!found || ktKilled(mykthread())){
+      release(&my_wait_lock);
       return -1;
     }
     
     // Wait for a child to exit.
-    // sleep(p, &wait_lock);  //DOC: wait-sleep
+    sleep(mykthread(), &my_wait_lock);  //DOC: wait-sleep
   }
+}
+
+int
+ktKilled(struct kthread *kt)
+{
+  int k;
+  
+  acquire(&kt->lock);
+  k = kt->killed;
+  release(&kt->lock);
+  return k;
 }

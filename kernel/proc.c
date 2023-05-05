@@ -372,6 +372,18 @@ void
 exit(int status)
 {
   struct proc *p = myproc();
+  int id;
+  struct kthread *nkt;
+  char stat;
+  for(nkt = p->kthread; nkt < &p->kthread[NKT]; nkt++) {
+    if (nkt != mykthread()){
+      acquire(&nkt->lock);
+      id = nkt->tid;
+      nkt->killed = 1;
+      release(&nkt->lock);
+      kthread_join(id,(uint64)&stat);
+    }
+  }
 
   if(p == initproc)
     panic("init exiting");
@@ -409,16 +421,6 @@ exit(int status)
   acquire(&kt->lock);
   kt->state = ZOMBIE;
   kt->xstate = status;
-
-  // for (kt = p->kthread; kt < &p->kthread[NKT]; kt++)
-  // {
-  //   acquire(&kt->lock);
-  //   kt->state = ZOMBIE;
-  //   // release(&kt->lock);
-  // }
-
-
-  
 
   release(&wait_lock);
 
