@@ -23,7 +23,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 
-int kthread_create( void *(*start_func)(), void *stack, int stack_size );
+int kthread_create( void *(*start_func)(), uint stack, int stack_size );
 int kthread_id();
 int kthread_kill(int ktid);
 void kthread_exit(int status);

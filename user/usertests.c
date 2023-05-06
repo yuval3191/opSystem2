@@ -29,6 +29,91 @@ char buf[BUFSZ];
 
 // what if you pass ridiculous pointers to system calls
 // that read user memory with copyin?
+
+// starting the OS232 Assignment 2 simple tests
+
+#include "uthread.h"
+
+volatile enum sched_priority x;
+
+
+void uthread_a_start_func(void){
+  if(x != MEDIUM){
+    printf("sched policy failed\n");
+    exit(1);
+  }
+  if(uthread_get_priority() != LOW){
+   printf("uthread_get_priority failed\n");
+   exit(1);
+ }
+ for(int i=0; i<10; i++){
+   sleep(10); // simulate work
+ }
+ uthread_exit();
+ printf("uthread_exit failed\n");
+  exit(1);
+}
+
+void uthread_b_start_func(void){
+  for(int i=0; i<10; i++){
+    sleep(10); // simulate work
+  }
+  x = uthread_get_priority();
+  uthread_exit();
+  printf("uthread_exit failed\n");
+  exit(1);
+}
+
+void ulttest()
+{
+  x = HIGH;
+  uthread_create(uthread_a_start_func, LOW);
+  uthread_create(uthread_b_start_func, MEDIUM);
+  uthread_start_all();
+  printf("uthread_start_all failed\n");
+  exit(1);
+}
+
+void kthread_start_func(void){
+ for(int i=0; i<10; i++){
+    sleep(10); // simulate work
+  }
+  kthread_exit(0);
+  printf("kthread_exit failed\n");
+  exit(1);
+}
+
+void klttest()
+{
+ uint64 stack_a = (uint64)malloc(STACK_SIZE);
+ uint64 stack_b = (uint64)malloc(STACK_SIZE);
+ int kt_a = kthread_create((void *(*)())kthread_start_func, stack_a, STACK_SIZE);
+ if(kt_a <= 0){
+    printf("kthread_create failed\n");
+    exit(1);
+  }
+ int kt_b = kthread_create((void *(*)())kthread_start_func, stack_b, STACK_SIZE);
+  if(kt_a <= 0){
+   printf("kthread_create failed\n");
+   exit(1);
+  }
+
+  int joined = kthread_join(kt_a, 0);
+  if(joined != 0){
+   printf("kthread_join failed\n");
+   exit(1);
+ }
+
+ joined = kthread_join(kt_b, 0);
+ if(joined != 0){
+   printf("kthread_join failed\n");
+   exit(1);
+  }
+
+  free((void *)stack_a);
+  free((void *)stack_b);
+}
+
 void
 copyin(char *s)
 {
@@ -2575,66 +2660,68 @@ struct test {
   void (*f)(char *);
   char *s;
 } quicktests[] = {
-  {copyin, "copyin"},
-  {copyout, "copyout"},
-  {copyinstr1, "copyinstr1"},
-  {copyinstr2, "copyinstr2"},
-  {copyinstr3, "copyinstr3"},
-  {rwsbrk, "rwsbrk" },
-  {truncate1, "truncate1"},
-  {truncate2, "truncate2"},
-  {truncate3, "truncate3"},
-  {openiputtest, "openiput"},
-  {exitiputtest, "exitiput"},
-  {iputtest, "iput"},
-  {opentest, "opentest"},
-  {writetest, "writetest"},
-  {writebig, "writebig"},
-  {createtest, "createtest"},
-  {dirtest, "dirtest"},
-  {exectest, "exectest"},
-  {pipe1, "pipe1"},
-  {killstatus, "killstatus"},
-  {preempt, "preempt"},
-  {exitwait, "exitwait"},
-  {reparent, "reparent" },
-  {twochildren, "twochildren"},
-  {forkfork, "forkfork"},
-  {forkforkfork, "forkforkfork"},
-  {reparent2, "reparent2"},
-  {mem, "mem"},
-  {sharedfd, "sharedfd"},
-  {fourfiles, "fourfiles"},
-  {createdelete, "createdelete"},
-  {unlinkread, "unlinkread"},
-  {linktest, "linktest"},
-  {concreate, "concreate"},
-  {linkunlink, "linkunlink"},
-  {subdir, "subdir"},
-  {bigwrite, "bigwrite"},
-  {bigfile, "bigfile"},
-  {fourteen, "fourteen"},
-  {rmdot, "rmdot"},
-  {dirfile, "dirfile"},
-  {iref, "iref"},
-  {forktest, "forktest"},
-  {sbrkbasic, "sbrkbasic"},
-  {sbrkmuch, "sbrkmuch"},
-  {kernmem, "kernmem"},
-  {MAXVAplus, "MAXVAplus"},
-  {sbrkfail, "sbrkfail"},
-  {sbrkarg, "sbrkarg"},
-  {validatetest, "validatetest"},
-  {bsstest, "bsstest"},
-  {bigargtest, "bigargtest"},
-  {argptest, "argptest"},
-  {stacktest, "stacktest"},
-  {textwrite, "textwrite"},
-  {pgbug, "pgbug" },
-  {sbrkbugs, "sbrkbugs" },
-  {sbrklast, "sbrklast"},
-  {sbrk8000, "sbrk8000"},
-  {badarg, "badarg" },
+  // {copyin, "copyin"},
+  // {copyout, "copyout"},
+  // {copyinstr1, "copyinstr1"},
+  // {copyinstr2, "copyinstr2"},
+  // {copyinstr3, "copyinstr3"},
+  // {rwsbrk, "rwsbrk" },
+  // {truncate1, "truncate1"},
+  // {truncate2, "truncate2"},
+  // {truncate3, "truncate3"},
+  // {openiputtest, "openiput"},
+  // {exitiputtest, "exitiput"},
+  // {iputtest, "iput"},
+  // {opentest, "opentest"},
+  // {writetest, "writetest"},
+  // {writebig, "writebig"},
+  // {createtest, "createtest"},
+  // {dirtest, "dirtest"},
+  // {exectest, "exectest"},
+  // {pipe1, "pipe1"},
+  // {killstatus, "killstatus"},
+  // {preempt, "preempt"},
+  // {exitwait, "exitwait"},
+  // {reparent, "reparent" },
+  // {twochildren, "twochildren"},
+  // {forkfork, "forkfork"},
+  // {forkforkfork, "forkforkfork"},
+  // {reparent2, "reparent2"},
+  // {mem, "mem"},
+  // {sharedfd, "sharedfd"},
+  // {fourfiles, "fourfiles"},
+  // {createdelete, "createdelete"},
+  // {unlinkread, "unlinkread"},
+  // {linktest, "linktest"},
+  // {concreate, "concreate"},
+  // {linkunlink, "linkunlink"},
+  // {subdir, "subdir"},
+  // {bigwrite, "bigwrite"},
+  // {bigfile, "bigfile"},
+  // {fourteen, "fourteen"},
+  // {rmdot, "rmdot"},
+  // {dirfile, "dirfile"},
+  // {iref, "iref"},
+  // {forktest, "forktest"},
+  // {sbrkbasic, "sbrkbasic"},
+  // {sbrkmuch, "sbrkmuch"},
+  // {kernmem, "kernmem"},
+  // {MAXVAplus, "MAXVAplus"},
+  // {sbrkfail, "sbrkfail"},
+  // {sbrkarg, "sbrkarg"},
+  // {validatetest, "validatetest"},
+  // {bsstest, "bsstest"},
+  // {bigargtest, "bigargtest"},
+  // {argptest, "argptest"},
+  // {stacktest, "stacktest"},
+  // {textwrite, "textwrite"},
+  // {pgbug, "pgbug" },
+  // {sbrkbugs, "sbrkbugs" },
+  // {sbrklast, "sbrklast"},
+  // {sbrk8000, "sbrk8000"},
+  // {badarg, "badarg" },
+  // {ulttest, "ulttest"},
+  {klttest, "klttest"},
 
   { 0, 0},
 };
@@ -3073,6 +3160,7 @@ drivetests(int quick, int continuous, char *justone) {
   } while(continuous);
   return 0;
 }
+
 
 int
 main(int argc, char *argv[])

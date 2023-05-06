@@ -8,6 +8,7 @@
         "memlayout.h": "c",
         "user.h": "c",
         "kthread.h": "c",
-        "typeinfo": "c"
+        "typeinfo": "c",
+        "fcntl.h": "c"
     },
 }
