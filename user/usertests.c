@@ -87,12 +87,21 @@ void klttest()
 {
  uint64 stack_a = (uint64)malloc(STACK_SIZE);
  uint64 stack_b = (uint64)malloc(STACK_SIZE);
- int kt_a = kthread_create((void *(*)())kthread_start_func, stack_a, STACK_SIZE);
+ uint64 stack_c = (uint64)malloc(STACK_SIZE);
+ uint64 stack_d = (uint64)malloc(STACK_SIZE);
+ uint64 stack_e = (uint64)malloc(STACK_SIZE);
+ int kt_a = kthread_create(kthread_start_func, stack_a, STACK_SIZE);
+ int kt_c = kthread_create(kthread_start_func, stack_c, STACK_SIZE);
+ int kt_d = kthread_create(kthread_start_func, stack_d, STACK_SIZE);
+ int kt_e = kthread_create(kthread_start_func, stack_e, STACK_SIZE);
+
+ 
  if(kt_a <= 0){
     printf("kthread_create failed\n");
     exit(1);
   }
- int kt_b = kthread_create((void *(*)())kthread_start_func, stack_b, STACK_SIZE);
+  printf("done wth create\n");
+  int kt_b = kthread_create(kthread_start_func, stack_b, STACK_SIZE);
   if(kt_a <= 0){
    printf("kthread_create failed\n");
    exit(1);
@@ -103,8 +112,13 @@ void klttest()
    printf("kthread_join failed\n");
    exit(1);
  }
+  printf("done with join\n");
 
  joined = kthread_join(kt_b, 0);
+ joined = kthread_join(kt_c, 0);
+ joined = kthread_join(kt_d, 0);
+ joined = kthread_join(kt_e, 0);
+ 
  if(joined != 0){
    printf("kthread_join failed\n");
    exit(1);
@@ -2660,67 +2674,67 @@ struct test {
   void (*f)(char *);
   char *s;
 } quicktests[] = {
-  // {copyin, "copyin"},
-  // {copyout, "copyout"},
-  // {copyinstr1, "copyinstr1"},
-  // {copyinstr2, "copyinstr2"},
-  // {copyinstr3, "copyinstr3"},
-  // {rwsbrk, "rwsbrk" },
-  // {truncate1, "truncate1"},
-  // {truncate2, "truncate2"},
-  // {truncate3, "truncate3"},
-  // {openiputtest, "openiput"},
-  // {exitiputtest, "exitiput"},
-  // {iputtest, "iput"},
-  // {opentest, "opentest"},
-  // {writetest, "writetest"},
-  // {writebig, "writebig"},
-  // {createtest, "createtest"},
-  // {dirtest, "dirtest"},
-  // {exectest, "exectest"},
-  // {pipe1, "pipe1"},
-  // {killstatus, "killstatus"},
-  // {preempt, "preempt"},
-  // {exitwait, "exitwait"},
-  // {reparent, "reparent" },
-  // {twochildren, "twochildren"},
-  // {forkfork, "forkfork"},
-  // {forkforkfork, "forkforkfork"},
-  // {reparent2, "reparent2"},
-  // {mem, "mem"},
-  // {sharedfd, "sharedfd"},
-  // {fourfiles, "fourfiles"},
-  // {createdelete, "createdelete"},
-  // {unlinkread, "unlinkread"},
-  // {linktest, "linktest"},
-  // {concreate, "concreate"},
-  // {linkunlink, "linkunlink"},
-  // {subdir, "subdir"},
-  // {bigwrite, "bigwrite"},
-  // {bigfile, "bigfile"},
-  // {fourteen, "fourteen"},
-  // {rmdot, "rmdot"},
-  // {dirfile, "dirfile"},
-  // {iref, "iref"},
-  // {forktest, "forktest"},
-  // {sbrkbasic, "sbrkbasic"},
-  // {sbrkmuch, "sbrkmuch"},
-  // {kernmem, "kernmem"},
-  // {MAXVAplus, "MAXVAplus"},
-  // {sbrkfail, "sbrkfail"},
-  // {sbrkarg, "sbrkarg"},
-  // {validatetest, "validatetest"},
-  // {bsstest, "bsstest"},
-  // {bigargtest, "bigargtest"},
-  // {argptest, "argptest"},
-  // {stacktest, "stacktest"},
-  // {textwrite, "textwrite"},
-  // {pgbug, "pgbug" },
-  // {sbrkbugs, "sbrkbugs" },
-  // {sbrklast, "sbrklast"},
-  // {sbrk8000, "sbrk8000"},
-  // {badarg, "badarg" },
-  // {ulttest, "ulttest"},
+  {copyin, "copyin"},
+  {copyout, "copyout"},
+  {copyinstr1, "copyinstr1"},
+  {copyinstr2, "copyinstr2"},
+  {copyinstr3, "copyinstr3"},
+  {rwsbrk, "rwsbrk" },
+  {truncate1, "truncate1"},
+  {truncate2, "truncate2"},
+  {truncate3, "truncate3"},
+  {openiputtest, "openiput"},
+  {exitiputtest, "exitiput"},
+  {iputtest, "iput"},
+  {opentest, "opentest"},
+  {writetest, "writetest"},
+  {writebig, "writebig"},
+  {createtest, "createtest"},
+  {dirtest, "dirtest"},
+  {exectest, "exectest"},
+  {pipe1, "pipe1"},
+  {killstatus, "killstatus"},
+  {preempt, "preempt"},
+  {exitwait, "exitwait"},
+  {reparent, "reparent" },
+  {twochildren, "twochildren"},
+  {forkfork, "forkfork"},
+  {forkforkfork, "forkforkfork"},
+  {reparent2, "reparent2"},
+  {mem, "mem"},
+  {sharedfd, "sharedfd"},
+  {fourfiles, "fourfiles"},
+  {createdelete, "createdelete"},
+  {unlinkread, "unlinkread"},
+  {linktest, "linktest"},
+  {concreate, "concreate"},
+  {linkunlink, "linkunlink"},
+  {subdir, "subdir"},
+  {bigwrite, "bigwrite"},
+  {bigfile, "bigfile"},
+  {fourteen, "fourteen"},
+  {rmdot, "rmdot"},
+  {dirfile, "dirfile"},
+  {iref, "iref"},
+  {forktest, "forktest"},
+  {sbrkbasic, "sbrkbasic"},
+  {sbrkmuch, "sbrkmuch"},
+  {kernmem, "kernmem"},
+  {MAXVAplus, "MAXVAplus"},
+  {sbrkfail, "sbrkfail"},
+  {sbrkarg, "sbrkarg"},
+  {validatetest, "validatetest"},
+  {bsstest, "bsstest"},
+  {bigargtest, "bigargtest"},
+  {argptest, "argptest"},
+  {stacktest, "stacktest"},
+  {textwrite, "textwrite"},
+  {pgbug, "pgbug" },
+  {sbrkbugs, "sbrkbugs" },
+  {sbrklast, "sbrklast"},
+  {sbrk8000, "sbrk8000"},
+  {badarg, "badarg" },
+  {ulttest, "ulttest"},
   {klttest, "klttest"},
 
   { 0, 0},

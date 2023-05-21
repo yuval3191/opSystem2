@@ -375,15 +375,22 @@ exit(int status)
   int id;
   struct kthread *nkt;
   char stat;
-  for(nkt = p->kthread; nkt < &p->kthread[NKT]; nkt++) {
-    if (nkt != mykthread()){
-      acquire(&nkt->lock);
-      id = nkt->tid;
-      nkt->killed = 1;
-      release(&nkt->lock);
-      kthread_join(id,(uint64)&stat);
-    }
+
+  static int first = 1;
+
+  if (first) {
+    first = 0;
+    for(nkt = p->kthread; nkt < &p->kthread[NKT]; nkt++) {
+      if (nkt != mykthread()){
+        acquire(&nkt->lock);
+        id = nkt->tid;
+        nkt->killed = 1;
+        release(&nkt->lock);
+        kthread_join(id,(uint64)&stat);
+      }
   }
+}
+
 
   if(p == initproc)
     panic("init exiting");
@@ -604,21 +611,15 @@ wakeup(void *chan)
   struct proc *p;
 
   for(p = proc; p < &proc[NPROC]; p++) {
-    if(p != myproc()){
-      acquire(&p->lock);
-      if (p->state == PUSED){
-        struct kthread *kt;
-        for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
-          if(kt != mykthread()){
-            acquire(&kt->lock);
-            if(kt->state == SLEEPING && kt->chan == chan) {
-              kt->state = RUNNABLE;
-            }
-            release(&kt->lock);
-          }
+    struct kthread *kt;
+    for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+      if(kt != mykthread()){
+        acquire(&kt->lock);
+        if(kt->state == SLEEPING && kt->chan == chan) {
+          kt->state = RUNNABLE;
         }
+        release(&kt->lock);
       }
-      release(&p->lock);
     }
   }
 }
@@ -727,5 +728,50 @@ procdump(void)
       state = "???";
     printf("%d %s %s", p->pid, state, p->name);
     printf("\n");
+  }
+}
+
+int kthread_join(int ktid, uint64 status)
+{
+  // int tid;
+  int found = 0;
+  struct proc *p = myproc();
+  struct kthread *kt;
+
+  acquire(&wait_lock);
+
+  for(;;){
+    // Scan through table looking for exited children.
+    for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
+      if(kt->tid == ktid && kt->state != UNUSED ){
+        // make sure the child isn't still in exit() or swtch().
+        acquire(&kt->lock);
+        found = 1;
+        if(kt->state == ZOMBIE){
+          // Found one.
+          
+          if(kt->xstate || (status != 0 && copyout(p->pagetable, status, (char *)&kt->xstate,sizeof(kt->xstate)) < 0))
+          {
+            release(&kt->lock);
+            release(&wait_lock);
+            return -1;
+          }
+          // freeproc(kt);
+          release(&kt->lock);
+          release(&wait_lock);
+          return 0;
+        }
+        release(&kt->lock);
+      }
+    }
+
+    // No point waiting if we don't have any children.
+    if(!found || ktKilled(mykthread())){
+      release(&wait_lock);
+      return -1;
+    }
+    
+    // Wait for a child to exit.
+    sleep(p, &wait_lock);  //DOC: wait-sleep
   }
 }

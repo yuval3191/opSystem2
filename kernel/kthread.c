@@ -150,7 +150,7 @@ int kthread_create( uint64 start_func, uint64 stack, uint stack_size )
   nkt->state = RUNNABLE;
 
   nkt->trapframe->epc = (uint64)(start_func);      // user program counter
-  nkt->trapframe->sp = kt->kstack + stack_size;  // user stack pointer
+  nkt->trapframe->sp = stack + stack_size;  // user stack pointer
 
   release(&nkt->lock);
   return tid;
@@ -183,51 +183,10 @@ void kthread_exit(int status)
   kt->state = ZOMBIE;
   kt->xstate = status;
   release(&kt->lock);
-}
-
-int kthread_join(int ktid, uint64 status)
-{
-  // int tid;
-  int found = 0;
-  struct proc *p = myproc();
-  struct kthread *kt;
-
-  acquire(&my_wait_lock);
-
-  for(;;){
-    // Scan through table looking for exited children.
-    for(kt = p->kthread; kt < &p->kthread[NKT]; kt++){
-      if(kt->tid == ktid && kt->state != UNUSED ){
-        // make sure the child isn't still in exit() or swtch().
-        acquire(&kt->lock);
-        found = 1;
-        if(kt->state == ZOMBIE){
-          // Found one.
-          
-          if(kt->xstate || (status != 0 && copyout(p->pagetable, status, (char *)&kt->xstate,sizeof(kt->xstate)) < 0))
-          {
-            release(&kt->lock);
-            release(&my_wait_lock);
-            return -1;
-          }
-          // freeproc(kt);
-          release(&kt->lock);
-          release(&my_wait_lock);
-          return 0;
-        }
-        release(&kt->lock);
-      }
-    }
-
-    // No point waiting if we don't have any children.
-    if(!found || ktKilled(mykthread())){
-      release(&my_wait_lock);
-      return -1;
-    }
-    
-    // Wait for a child to exit.
-    sleep(mykthread(), &my_wait_lock);  //DOC: wait-sleep
-  }
+  wakeup(kt->myproc);
+  acquire(&kt->lock);
+  sched();
+  panic("kthread zombie exit");
 }
 
 int
